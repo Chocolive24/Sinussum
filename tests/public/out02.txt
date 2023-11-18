@@ -1,0 +1,1 @@
+Error: signal type must be SAWTOOTH, SQUARE or TRIANGLE
