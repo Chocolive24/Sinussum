@@ -1,6 +1,4 @@
 #include <iostream>
-#include <string>
-#include <array>
 #include <vector>
 
 using namespace std;
@@ -28,16 +26,9 @@ enum Signal_type
 
 struct Intervalle
 {
-    double tmin;
-    double tmax;
+    double min;
+    double max;
 };
-
-struct Grid
-{
-    int row;
-    int column = 2 * row - 1;
-};
-
 
 
 void print_error(string message) 
@@ -50,10 +41,9 @@ void print_error(string message)
 // Prototypes de fonctions.
 Signal_type get_signal();
 int get_sine_term_count();
-Intervalle temporel_interval();
-double ask_value();
+Intervalle get_temporal_interval();
 Intervalle get_amplitude();
-Grid tableau();
+int get_row_number();
 
 
 
@@ -61,15 +51,55 @@ int main()
 {
     Signal_type signal = get_signal();
     cout << "Signal " << signal << endl;
+
     int nbN = get_sine_term_count();
     cout << "nombre de termes " << nbN << endl;
-    Intervalle inter = temporel_interval();
-    cout << "temp interval" << inter.tmin << "       " << inter.tmax << endl;
+
+    Intervalle inter = get_temporal_interval();
+    cout << "temp interval" << inter.min << "       " << inter.max << endl;
+
     Intervalle amplitude = get_amplitude();
-    cout << "amplitude " << amplitude.tmin << "       " << amplitude.tmax << endl;
-    Grid grille = tableau();
-    cout << "nb ligne et col " << grille.row << "         " << grille.column << endl;
-    vector<vector<char>> grid;
+    cout << "amplitude " << amplitude.min << "       " << amplitude.max << endl;
+
+    int row = get_row_number();
+    int column = 2 * row - 1;
+    cout << "nb ligne et col " << row << "         " << column << endl;
+
+    vector<vector<char> > grid(row, vector<char>(column, '*'));
+
+    for (int j(0); j < column; j++)
+    {
+        cout << '-';
+    }
+    cout << endl;
+
+    for (int i(0); i < row; i++)
+    {
+        if (i == row / 2 )
+        {
+            for (int j(0); j < column; j++)
+            {
+                grid[i][j] = '.';
+                cout << grid[i][j];
+            }
+            cout << endl;
+            continue;
+        }
+        for (int j(0); j < column; j++)
+        {
+            cout << grid[i][j];
+        }
+
+        cout << endl;
+    }
+
+    for (int j(0); j < column; j++)
+    {
+        cout << '-';
+    }
+    cout << endl;
+
+
 
 }
 
@@ -78,19 +108,15 @@ Signal_type get_signal()
     string user_signal;
     cin >> user_signal;
 
-    // La fonction compare de string revoie 0 si les deux string comparées 
-    // sont similaires.
-    constexpr int compare_success = 0;
-
-    if (user_signal.compare("SAWTOOTH") == compare_success)
+    if (user_signal == "SAWTOOTH")
     {
         return SAWTOOTH;
     }
-    else if (user_signal.compare("SQUARE") == compare_success)
+    else if (user_signal == "SQUARE")
     {
         return SQUARE;
     }
-    else if (user_signal.compare("TRIANGLE") == compare_success)
+    else if (user_signal == "TRIANGLE")
     {
         return TRIANGLE;
     }
@@ -113,21 +139,15 @@ int get_sine_term_count()
     return n;
 }
 
-double ask_value()
+
+
+Intervalle get_temporal_interval() 
 {
-    double n;
-    cin >> n;
-
-    return n;
-}
-
-
-
-
-Intervalle temporel_interval() 
-{
-    double tmin = ask_value();
-    double tmax = ask_value();
+    double tmin;
+    cin >> tmin;
+    
+    double tmax;
+    cin >> tmax;
 
     if (tmin >= tmax) 
     {
@@ -142,39 +162,46 @@ Intervalle temporel_interval()
     {
         print_error(WRONG_TIME_VAL);
     }
-    Intervalle I = { tmin, tmax };
+
+    Intervalle i = { tmin, tmax };
    
-    return I;
+    return i;
 }
 
 Intervalle get_amplitude()
 {
-    double min = ask_value();
-    double max = ask_value();
+    double min;
+    cin >> min;
+
+    double max;
+    cin >> max;
     
-    if (min >= max) {
+    if (min >= max) 
+    {
         print_error(SIGNAL_MIN_MAX);
     }
 
-    Intervalle I = { min, max };
+    Intervalle i = { min, max };
 
-    return I;
+    return i;
 }
 
-Grid tableau()
+int get_row_number()
 {
-    int n = ask_value();
+    int n;
+    cin >> n;
 
-    if (n <= 2) {
+    if (n <= 2) 
+    {
         print_error(NBN_TOO_SMALL);
     }
     else if (n % 2 == 0) 
     {
         print_error(NBL_NOT_ODD);
     }
-
-    Grid I = { n };
     
-    return I;
+    return n;
 }
+
+
 
