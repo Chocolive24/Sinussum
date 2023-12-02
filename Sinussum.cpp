@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 using namespace std;
 
@@ -43,7 +45,7 @@ int get_sine_term_count();
 Intervalle get_temporal_interval();
 Intervalle get_amplitude();
 int get_row_number();
-vector<vector<char>> create_grid(int row, int column, Intervalle time, Intervalle s);
+vector<vector<char>> create_grid(Signal_type type, int row, int column, Intervalle time, Intervalle s, int nbN);
 void draw_grid(vector<vector<char> > grid);
 
 
@@ -68,48 +70,8 @@ int main()
     int column = 2 * row - 1;
     cout << "nb ligne et col " << row << "         " << column << endl;
 
-    vector<vector<char>> grid = create_grid(row, column, inter, amplitude);
+    vector<vector<char>> grid = create_grid(signal, row, column, inter, amplitude, nbN);
     draw_grid(grid);
-
-
-
-
-   /* vector<vector<char> > grid(row, vector<char>(column, '*'));
-
-    for (int j(0); j < column; j++)
-    {
-        cout << '-';
-    }
-    cout << endl;
-
-    for (int i(0); i < row; i++)
-    {
-        if (i == row / 2 )
-        {
-            for (int j(0); j < column; j++)
-            {
-                grid[i][j] = '.';
-                cout << grid[i][j];
-            }
-            cout << endl;
-            continue;
-        }
-        for (int j(0); j < column; j++)
-        {
-            cout << grid[i][j];
-        }
-
-        cout << endl;
-    }
-
-    for (int j(0); j < column; j++)
-    {
-        cout << '-';
-    }
-    cout << endl;*/
-
-
-
 }
 
 Signal_type get_signal()
@@ -212,22 +174,207 @@ int get_row_number()
     return n;
 }
 
-vector<vector<char>> create_grid(int row, int column, Intervalle time, Intervalle s)
+vector<vector<char>> create_grid(Signal_type type, int row, int column, Intervalle time, Intervalle s, int nbN)
 {
-    vector<vector<char>> grid(row, vector<char>(column, '@'));
+    vector<vector<char>> grid(row, vector<char>(column, ' '));
 
     double delta_t = (time.max - time.min) / (column - 1);
     double delta_s = (s.max - s.min) / (row - 1);
     
-    int i = (0 - s.min) / delta_s + 0.5;
-    
-    if (i >= 0)
+    const int s_zero = (0 - s.min) / delta_s + 0.5;
+
+    for (size_t j(0); j < column; j++) 
     {
-        for (size_t j(0); j < column; j++)
+        double t = time.min + (j * delta_t);
+
+        // Add '.' symbol to represent temporal axis when equal to zero.
+        if (s_zero >= 0)
         {
-            grid[row - 1 - i][j] = '.';
+            grid[row - 1 - s_zero][j] = '.';
         }
+
+        bool is_value_discountinued = false;
+
+        switch (type)
+        { 
+            case SAWTOOTH:
+            {
+              // Add '+' symbol to represent theorical signal value.
+
+              // For discontinue values
+              if ((t >= 0 - EPSIL_T) and (t <= 0 + EPSIL_T)) 
+              {
+                if (s_zero >= 0) 
+                {
+                    grid[s_zero][j] = '+';
+                    is_value_discountinued = true;
+                }
+              }
+
+              if ((t >= 1 - EPSIL_T) and (t <= 1 + EPSIL_T)) 
+              {
+                if (s_zero >= 0) 
+                {
+                    grid[s_zero][j] = '+';
+                    is_value_discountinued = true;
+                }
+              }
+
+              if (!is_value_discountinued)
+              {
+                // For "Normal" values
+                double saw = -1. + (2. * t);
+                double v_th = ((saw - s.min) / (delta_s)) + 0.5;
+
+                if (v_th >= 0) 
+                {
+                    int i = row - 1 - static_cast<int>(v_th);
+                    grid[i][j] = '+';
+                }
+              }
+
+              // Add '*' symbol for approximate signal values.
+
+              double sin_sum = 0.;
+
+              for (int k(1); k <= nbN; k++) 
+              {
+                sin_sum += (pow(-1, k) / k) * sin(2 * M_PI * k * (t - 0.5));
+              }
+
+              double v = ((((-2) / M_PI) * sin_sum) - s.min) / delta_s + 0.5;
+
+              if ((v >= 0) and (v < row)) 
+              {
+                int i = static_cast<int>(v);
+                grid[row - 1 - i][j] = '*';
+              }
+
+              break;
+            }
+              
+            case SQUARE:
+
+            {
+                // Add '+' symbol to represent theorical signal value.
+
+                // For discontinue values
+                if ((t >= 0 - EPSIL_T) and (t <= 0 + EPSIL_T)) 
+                {
+                    if (s_zero >= 0)
+                    {
+                      grid[s_zero][j] = '+'; 
+                      is_value_discountinued = true;
+                    }
+
+                }
+
+                if ((t >= 0.5 - EPSIL_T) and (t <= 0.5 + EPSIL_T)) 
+                {
+                    if (s_zero >= 0) 
+                    {
+                      grid[s_zero][j] = '+';
+                      is_value_discountinued = true;
+                    }
+
+                }
+
+                if ((t >= 1 - EPSIL_T) and (t <= 1 + EPSIL_T)) 
+                {
+                    if (s_zero >= 0) 
+                    {
+                      grid[s_zero][j] = '+';
+                      is_value_discountinued = true;
+                    }
+
+                }
+
+                if (!is_value_discountinued)
+                {
+                    // '+'
+                    int squa = 0;
+
+                    if ((t > 0.) and (t < 0.5)) 
+                    {
+                      squa = 1;
+                    }
+                    if ((t > 0.5) and (t < 1.)) 
+                    {
+                      squa = -1;
+                    }
+
+                    double v_th = (squa - s.min) / delta_s + 0.5;
+                    if (v_th >= 0) 
+                    {
+                      int i = row - 1 - static_cast<int>(v_th);
+                      grid[i][j] = '+';
+                    }
+                }
+
+                // '*'
+                double sin_sum = 0;
+
+                for (int k(1); k <= nbN; k++)
+                {
+                    sin_sum += sin(2 * M_PI * (2 * k - 1) * t) / (2 * k - 1);
+                }
+
+                double v = (4 / M_PI * sin_sum - s.min) / delta_s + 0.5;
+
+                if ((v >= 0) and (v < row))
+                {
+                    int i = row - 1 - static_cast<int>(v);
+                    grid[i][j] = '*';
+                }
+
+                break;
+            }
+
+            case TRIANGLE:
+            {
+                // '+'
+                double trig;
+                if ((t >= 0) and (t < 0.5))
+                {
+                    trig = -1 + 4 * t;
+
+
+                }
+                else
+                {
+                    trig = -4 * t + 3;
+
+                }
+                double v_th = (trig - s.min) / delta_s + 0.5;
+                if (v_th >= 0)
+                {
+                    int i = row - 1 - static_cast<int>(v_th);
+                    grid[i][j] = '+';
+                }
+                
+                double sin_sum(0);
+                
+                for (int k(1); k <= row; k++)
+                {
+                    sin_sum += (pow(-1, k) / pow(2 * k - 1, 2))*sin(2 * M_PI * (2 * k - 1) * (t - 0.25));
+                   
+                }
+
+                double v = ((-8) / pow(M_PI, 2) * sin_sum - s.min) / delta_s + 0.5;
+
+                 if (v >= 0) 
+                 {
+                    int i = row - 1 - static_cast<int>(v);
+                    grid[i][j] = '*';
+                }
+
+
+                break;
+            }
+        }
+       
     }
+
    
 
     return grid;
@@ -238,6 +385,13 @@ void draw_grid(vector<vector<char> > grid)
     const size_t column = grid[0].size();
     const size_t row = grid.size();
 
+    for (size_t j(0); j < column; j++)
+    {
+        cout << '-';
+    }
+    cout << endl;
+        
+
     for (size_t i(0); i < row; i++)
     {
         for (size_t j(0); j < column; j++)
@@ -246,5 +400,10 @@ void draw_grid(vector<vector<char> > grid)
         }
         cout << endl;
     }
-}
 
+    for (size_t j(0); j < column; j++)
+    {
+        cout << '-';
+    }
+    cout << endl;
+}
