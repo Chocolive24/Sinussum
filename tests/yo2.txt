@@ -1,0 +1,25 @@
+def compare_text_files(file1_path, file2_path):
+    try:
+        with open(file1_path, 'r', newline='') as file1, open(file2_path, 'r', newline='') as file2:
+            lines1 = file1.readlines()
+            lines2 = file2.readlines()
+
+            for line_num, (line1, line2) in enumerate(zip(lines1, lines2), start=1):
+                if line1 != line2:
+                    char_num = next((i for i, (c1, c2) in enumerate(zip(line1, line2), start=1) if c1 != c2), None)
+                    print(f"Difference found at Line {line_num}, Character {char_num}")
+                    break
+            else:
+                if len(lines1) != len(lines2):
+                    print("Files have different lengths, but content is identical up to the shorter file.")
+                else:
+                    print("The content of the two files is identical.")
+    except FileNotFoundError:
+        print("One or both of the files not found.")
+
+if __name__ == "__main__":
+    # Get file paths from the user
+    file1_path = input("Enter the path of the first text file: ")
+    file2_path = input("Enter the path of the second text file: ")
+
+    compare_text_files(file1_path, file2_path)

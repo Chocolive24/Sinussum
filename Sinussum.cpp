@@ -2,6 +2,7 @@
 #include <vector>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <iomanip>
 
 using namespace std;
 
@@ -45,10 +46,61 @@ int get_sine_term_count();
 Intervalle get_temporal_interval();
 Intervalle get_amplitude();
 int get_row_number();
+double calculate_appoximate_value(int nbN, double t, Signal_type type);
 vector<vector<char>> create_grid(Signal_type type, int row, int column, Intervalle time, Intervalle s, int nbN);
 void draw_grid(vector<vector<char> > grid);
 
+double find_max(int nbN, Signal_type type) {
+    Intervalle time{0, 0};
 
+    switch (type) 
+    {
+      case SAWTOOTH:
+        time.min = 1. - 1. / (2 * nbN + 1);
+        time.max = 1;
+        break;
+      case SQUARE:
+        time.min = 0;
+        time.max = 1. / (2 * nbN + 1);
+        break;
+      case TRIANGLE:
+        time.min = 0.5 - 1. / (2 * (2 * nbN + 1));
+        time.max = 0.5 + 1. / (2 * (2 * nbN + 1));
+        break;
+    }
+
+    double max = 0.0;
+    double old_max = 0.0;
+    while (true) 
+    {
+      double t_mid = (time.max + time.min) / 2.0;
+
+      double t_mid_left = (t_mid + time.min) / 2.0;
+      double t_mid_right = (time.max + t_mid) / 2.0;
+
+      double left_value = calculate_appoximate_value(nbN, t_mid_left, type);
+      double right_value = calculate_appoximate_value(nbN, t_mid_right, type);
+
+      if (left_value > right_value) 
+      {
+        time.max = t_mid;
+        max = left_value;
+      } 
+      else 
+      {
+        time.min = t_mid;
+        max = right_value;
+      }
+
+      double max_diff = fabs(max - old_max);
+      if (max_diff < EPSIL_DICHO) 
+      {
+        return max;
+      }
+
+      old_max = max;
+    }
+}
 
 
 
@@ -72,6 +124,10 @@ int main()
 
     vector<vector<char>> grid = create_grid(signal, row, column, inter, amplitude, nbN);
     draw_grid(grid);
+
+   double max = find_max(nbN, signal);
+
+   cout << setprecision(8) << fixed << max << '\n';
 }
 
 Signal_type get_signal()
@@ -354,7 +410,7 @@ vector<vector<char>> create_grid(Signal_type type, int row, int column, Interval
                 
                 double sin_sum(0);
                 
-                for (int k(1); k <= row; k++)
+                for (int k(1); k <= nbN; k++) // nbN -> row. askip ca marchait
                 {
                     sin_sum += (pow(-1, k) / pow(2 * k - 1, 2))*sin(2 * M_PI * (2 * k - 1) * (t - 0.25));
                    
@@ -406,4 +462,34 @@ void draw_grid(vector<vector<char> > grid)
         cout << '-';
     }
     cout << endl;
+}
+
+double calculate_appoximate_value(int nbN, double t, Signal_type type)
+{
+    double sin_sum = 0.0;
+
+    switch (type) 
+    {
+        case SAWTOOTH:
+          for (int k(1); k <= nbN; k++) 
+          {
+              sin_sum += (pow(-1, k) / k) * sin(2 * M_PI * k * (t - 0.5));
+          }
+          return ((-2) / M_PI) * sin_sum;
+        case SQUARE:
+          for (int k(1); k <= nbN; k++) 
+          {
+              sin_sum += sin(2 * M_PI * (2 * k - 1) * t) / (2 * k - 1);
+          }
+          return (4 / M_PI) * sin_sum;
+        case TRIANGLE:
+          for (int k(1); k <= nbN; k++) 
+          {
+              sin_sum += (pow(-1, k) / pow(2 * k - 1, 2)) *
+                          sin(2 * M_PI * (2 * k - 1) * (t - 0.25));
+          }
+          return ((-8) / pow(M_PI, 2)) * sin_sum;
+        default:
+          return 0.0;
+    }
 }
