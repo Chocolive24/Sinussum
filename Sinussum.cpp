@@ -56,27 +56,31 @@ Interval get_amplitude_interval();
 int get_grid_row_count();
 Grid_data get_grid_data();
 
+// Functions that handle grid creation. 
+vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
+								 const Grid_data& grid_data);
+
 // Functions that handle theoretical signal values.
 void add_theoritical_val(vector<vector<char>>& grid, Signal_type type, double t, 
 						 const Grid_data& grid_data, int j);
+int calculate_row_idx(double v_th, const Grid_data& grid_data);
+void add_char_to_grid(vector<vector<char>>& grid, char c, int row_idx, int col_idx);
 bool is_value_discontinued(const vector<double>& discontinuous_values, double t);
-double calculate_theoritcial_val(Signal_type signal_type, double t);
+double calculate_theoritical_val(Signal_type signal_type, double t);
 
 // Functions that handle approximate signal values.
+void add_approx_val(vector<vector<char>>& grid, Signal_type type,
+					int sine_count, double t, const Grid_data& grid_data,int j);
 double calculate_approx_val(Signal_type signal_type, int sine_count, double t);
-void add_approximate_values(vector<vector<char>>& grid, Signal_type type,
-							int sine_count, double t, const Grid_data& grid_data,
-							int j);
 
-// Functions that handle grid creation and display. 
-vector<vector<char>> create_grid(Signal_type signal_type, int sine_count, 
-								 const Grid_data& grid_data);
+// Functions that handle grid display. 
+void draw_line_of_dashes(size_t length);
 void draw_grid(const vector<vector<char>>& grid);
 
 // Functions that manage the dichotomic search for the maximum of the 
 // approximated signal over a period.
 double find_approx_signal_max(Signal_type signal_type, int sine_count);
-double dichotomic_max_search(Interval t, Signal_type signal_type, int sine_count);
+double dichotomic_max_search(Signal_type signal_type, int sine_count, Interval t);
 
 int main()
 {
@@ -89,7 +93,7 @@ int main()
 	vector<vector<char>> grid = create_grid(signal_type, sine_count, grid_data);
 	draw_grid(grid);
 
-	// Search for the maximum of the approximated signal over a period
+	// Search for the maximum of the approximated signal over a period.
 	double max = find_approx_signal_max(signal_type, sine_count);
 	cout << setprecision(8) << fixed << max << endl;
 }
@@ -240,8 +244,7 @@ vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
 		const double t = grid_data.t.min + (j * grid_data.delta_t);
 
 		add_theoritical_val(grid, signal_type, t, grid_data, j);
-
-		add_approximate_values(grid, signal_type, sine_count, t, grid_data, j);
+		add_approx_val(grid, signal_type, sine_count, t, grid_data, j);
 	}
 
 	return grid;
@@ -249,55 +252,59 @@ vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
 
 
 void add_theoritical_val(vector<vector<char>>& grid, Signal_type type, double t,
-	const Grid_data& grid_data, int j)
+						 const Grid_data& grid_data, int j)
 {
 	vector<double> discoutinuous_values = {};
 	switch (type)
 	{
-	case SAWTOOTH:
-		discoutinuous_values = { 0.0, 1.0 };
-		break;
-	case SQUARE:
-		discoutinuous_values = { 0.0, 0.5, 1.0 };
-		break;
-	case TRIANGLE:
-	default:
-		break;
+		case SAWTOOTH:
+			discoutinuous_values = { 0.0, 1.0 };
+			break;
+		case SQUARE:
+			discoutinuous_values = { 0.0, 0.5, 1.0 };
+			break;
+		case TRIANGLE:
+		default:
+			break;
 	}
 
 	if (is_value_discontinued(discoutinuous_values, t))
 	{
-		if (grid_data.s_zero_row_idx >= grid_data.first_row_idx)
-		{
-			grid[grid_data.s_zero_row_idx][j] = '+';
-		}
+		add_char_to_grid(grid, '+', grid_data.s_zero_row_idx, j);
 	}
 	else
 	{
-		double v_th = calculate_theoritcial_val(type, t);
-		double v = ((v_th - grid_data.s.min) / (grid_data.delta_s)) + 0.5;
-
-		if (v >= grid_data.first_row_idx)
-		{
-			int i = grid_data.row_count - 1 - static_cast<int>(v);
-			grid[i][j] = '+';
-		}
+		double v_th = calculate_theoritical_val(type, t);
+		int row_idx = calculate_row_idx(v_th, grid_data);
+		add_char_to_grid(grid, '+', row_idx, j);
 	}
 }
 
-void add_approximate_values(vector<vector<char>>& grid, Signal_type type, 
+int calculate_row_idx(double v_th, const Grid_data& grid_data)
+{
+	double v = ((v_th - grid_data.s.min) / (grid_data.delta_s)) + 0.5;
+	int i = grid_data.row_count - 1 - static_cast<int>(v);
+	return i;
+}
+
+void add_char_to_grid(vector<vector<char>>& grid, char c, int row_idx, int col_idx)
+{
+	const size_t row_count = grid.size();
+	if ((row_idx >= 0) and (row_idx < row_count))
+	{
+		grid[row_idx][col_idx] = c;
+	}
+}
+
+void add_approx_val(vector<vector<char>>& grid, Signal_type type, 
 							int sine_count, double t, const Grid_data& grid_data, 
 							int j)
 {
 	// Add '*' symbol for approximate signal values.
 	double s_t = calculate_approx_val(type, sine_count, t);
-	double v = (s_t - grid_data.s.min) / grid_data.delta_s + 0.5;
+	int row_idx = calculate_row_idx(s_t, grid_data);
 
-	if ((v >= 0) and (v < grid_data.row_count))
-	{
-		int i = static_cast<int>(v);
-		grid[grid_data.row_count - 1 - i][j] = '*';
-	}
+	add_char_to_grid(grid, '*', row_idx, j);
 }
 
 bool is_value_discontinued(const vector<double>& discontinuous_values, double t)
@@ -314,35 +321,36 @@ bool is_value_discontinued(const vector<double>& discontinuous_values, double t)
 	return false;
 }
 
-void draw_grid(const vector<vector<char>>& grid)
+void draw_line_of_dashes(size_t length)
 {
-	const size_t column = grid[0].size();
-	const size_t row = grid.size();
-
-	for (size_t j(0); j < column; j++)
+	for (size_t j = 0; j < length; j++)
 	{
 		cout << '-';
 	}
+
 	cout << endl;
+}
 
+void draw_grid(const vector<vector<char>>& grid)
+{
+	const size_t column_count = grid[0].size();
+	const size_t row_count = grid.size();
 
-	for (size_t i(0); i < row; i++)
+	draw_line_of_dashes(column_count);
+
+	for (size_t i(0); i < row_count; i++)
 	{
-		for (size_t j(0); j < column; j++)
+		for (size_t j(0); j < column_count; j++)
 		{
 			cout << grid[i][j];
 		}
 		cout << endl;
 	}
 
-	for (size_t j(0); j < column; j++)
-	{
-		cout << '-';
-	}
-	cout << endl;
+	draw_line_of_dashes(column_count);
 }
 
-double calculate_theoritcial_val(Signal_type signal_type, double t)
+double calculate_theoritical_val(Signal_type signal_type, double t)
 {
 	switch (signal_type)
 	{
@@ -403,24 +411,24 @@ double find_approx_signal_max(Signal_type signal_type, int sine_count)
 	// Get the correct period based on the signal type.
 	switch (signal_type)
 	{
-	case SAWTOOTH:
-		t.min = 1. - 1. / (2 * sine_count + 1);
-		t.max = 1;
-		break;
-	case SQUARE:
-		t.min = 0;
-		t.max = 1. / (2 * sine_count + 1);
-		break;
-	case TRIANGLE:
-		t.min = 0.5 - 1. / (2 * (2 * sine_count + 1));
-		t.max = 0.5 + 1. / (2 * (2 * sine_count + 1));
-		break;
+		case SAWTOOTH:
+			t.min = 1. - 1. / (2 * sine_count + 1);
+			t.max = 1;
+			break;
+		case SQUARE:
+			t.min = 0;
+			t.max = 1. / (2 * sine_count + 1);
+			break;
+		case TRIANGLE:
+			t.min = 0.5 - 1. / (2 * (2 * sine_count + 1));
+			t.max = 0.5 + 1. / (2 * (2 * sine_count + 1));
+			break;
 	}
 
-	return dichotomic_max_search(t, signal_type, sine_count);
+	return dichotomic_max_search(signal_type, sine_count, t);
 }
 
-double dichotomic_max_search(Interval t, Signal_type signal_type, int sine_count)
+double dichotomic_max_search(Signal_type signal_type, int sine_count, Interval t)
 {
 	double max = 0.0;
 	double old_max = 0.0;
