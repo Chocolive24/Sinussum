@@ -1,12 +1,6 @@
-Signal 1
-nombre de termes 1
-temp interval0       1
-amplitude -1.3       1.3
-nb ligne et col 5         9
----------
- +*+     
- * *     
-*...*...*
-     * * 
-     +*+ 
----------
+-----
+  *  
+.*.*.
+*   *
+-----
+0.81056947

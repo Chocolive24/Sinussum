@@ -1,0 +1,1 @@
+Error: signal max is not bigger than min

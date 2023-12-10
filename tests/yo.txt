@@ -1,9 +1,0 @@
-t_min = 1 - 1/(2 * nbN + 1);
-t_max = 1;
-
-
-mid_interval = (max_interval + min_interval) / 2;
-v_mid = (s(mid_interval) - s_min) / delta_s + 0.5;
-
-
-
