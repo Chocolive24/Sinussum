@@ -10,8 +10,7 @@ enum Signal_type
 {
 	SAWTOOTH,
 	SQUARE,
-	TRIANGLE,
-	UNKNOWN
+	TRIANGLE
 };
 
 // Constants and piece of code to be used for the project SINUSSUM.  
@@ -33,16 +32,15 @@ struct Interval
 	double max;
 };
 
-struct Grid_data 
+struct Grid_data
 {
 	Interval t;
-	Interval s;
+	Interval s; // Signal to draw in the grid.
 	int row_count;
 	int column_count;
 	double delta_t;
 	double delta_s;
-	int s_zero_row_idx;
-	const int first_row_idx = 0;
+	int s_zero_row_idx; // The row index when the signal amplitude is 0.
 };
 
 // Function prototypes.
@@ -58,19 +56,19 @@ Grid_data get_grid_data();
 
 // Functions that handle grid creation. 
 vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
-								 const Grid_data& grid_data);
+	const Grid_data& grid_data);
+int calculate_row_idx(double v_th, const Grid_data& grid_data);
+void add_char_to_grid(vector<vector<char>>& grid, char c, int row_idx,
+	int col_idx);
 
 // Functions that handle theoretical signal values.
-void add_theoritical_val(vector<vector<char>>& grid, Signal_type type, double t, 
-						 const Grid_data& grid_data, int j);
-int calculate_row_idx(double v_th, const Grid_data& grid_data);
-void add_char_to_grid(vector<vector<char>>& grid, char c, int row_idx, int col_idx);
-bool is_value_discontinued(const vector<double>& discontinuous_values, double t);
+void add_theoritical_val(vector<vector<char>>& grid, Signal_type type, double t,
+	const Grid_data& grid_data, int j);
 double calculate_theoritical_val(Signal_type signal_type, double t);
 
 // Functions that handle approximate signal values.
 void add_approx_val(vector<vector<char>>& grid, Signal_type type,
-					int sine_count, double t, const Grid_data& grid_data,int j);
+	int sine_count, double t, const Grid_data& grid_data, int j);
 double calculate_approx_val(Signal_type signal_type, int sine_count, double t);
 
 // Functions that handle grid display. 
@@ -110,7 +108,7 @@ Signal_type get_signal_type()
 	string user_signal;
 	cin >> user_signal;
 
-	Signal_type signal_type = UNKNOWN;
+	Signal_type signal_type = SAWTOOTH;
 
 	if (user_signal == "SAWTOOTH")
 	{
@@ -128,7 +126,7 @@ Signal_type get_signal_type()
 	{
 		print_error(BAD_SIGNAL);
 	}
-	
+
 	return signal_type;
 }
 
@@ -167,9 +165,7 @@ Interval get_temporal_interval()
 		print_error(WRONG_TIME_VAL);
 	}
 
-	Interval i = { tmin, tmax };
-
-	return i;
+	return Interval{ tmin, tmax };
 }
 
 Interval get_amplitude_interval()
@@ -185,9 +181,7 @@ Interval get_amplitude_interval()
 		print_error(SIGNAL_MIN_MAX);
 	}
 
-	Interval i = { min, max };
-
-	return i;
+	return Interval{ min, max };
 }
 
 int get_grid_row_count()
@@ -207,26 +201,33 @@ int get_grid_row_count()
 	return n;
 }
 
-Grid_data get_grid_data() 
+Grid_data get_grid_data()
 {
-	const Interval t = get_temporal_interval();
-	const Interval s = get_amplitude_interval();
-	const int row_count = get_grid_row_count();
+	Interval t = get_temporal_interval();
+	Interval s = get_amplitude_interval();
+	int row_count = get_grid_row_count();
 
-	// Calculates the other grid values with the user input values.
-	const int column_count = 2 * row_count - 1;
-	const double delta_t = (t.max - t.min) / (column_count - 1);
-	const double delta_s = (s.max - s.min) / (row_count - 1);
-	const int s_zero_row_idx = (0 - s.min) / delta_s + 0.5;
+	// Calculates the other grid values thanks to user inputs.
+	int column_count = 2 * row_count - 1;
+	double delta_t = (t.max - t.min) / (column_count - 1);
+	double delta_s = (s.max - s.min) / (row_count - 1);
+	int s_zero_row_idx = (0 - s.min) / delta_s + 0.5;
 
-	const Grid_data grid_data = { t, s, row_count, column_count, 
-								  delta_t, delta_s, s_zero_row_idx };
+	Grid_data grid_data = { t, s, row_count, column_count, 
+							delta_t, delta_s, s_zero_row_idx };
+	//grid_data.t = t;
+	//grid_data.s = s;
+	//grid_data.row_count = row_count;
+	//grid_data.column_count = column_count;
+	//grid_data.delta_t = delta_t;
+	//grid_data.delta_s = delta_s;
+	//grid_data.s_zero_row_idx = s_zero_row_idx;
 
 	return grid_data;
 }
 
 vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
-								 const Grid_data& grid_data)
+	const Grid_data& grid_data)
 {
 	const int row_count = grid_data.row_count;
 	const int column_count = grid_data.column_count;
@@ -235,11 +236,8 @@ vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
 	for (int j(0); j < column_count; j++)
 	{
 		// Add '.' symbol that represents the temporal axis when the amplitude is 0
-		// only if the line index is indeed inside the grid.
-		if (grid_data.s_zero_row_idx >= grid_data.first_row_idx)
-		{
-			grid[row_count - 1 - grid_data.s_zero_row_idx][j] = '.';
-		}
+		// Only if the line index is indeed inside the grid.
+		add_char_to_grid(grid, '.', row_count - 1 - grid_data.s_zero_row_idx, j);
 
 		const double t = grid_data.t.min + (j * grid_data.delta_t);
 
@@ -250,36 +248,6 @@ vector<vector<char>> create_grid(Signal_type signal_type, int sine_count,
 	return grid;
 }
 
-
-void add_theoritical_val(vector<vector<char>>& grid, Signal_type type, double t,
-						 const Grid_data& grid_data, int j)
-{
-	vector<double> discoutinuous_values = {};
-	switch (type)
-	{
-		case SAWTOOTH:
-			discoutinuous_values = { 0.0, 1.0 };
-			break;
-		case SQUARE:
-			discoutinuous_values = { 0.0, 0.5, 1.0 };
-			break;
-		case TRIANGLE:
-		default:
-			break;
-	}
-
-	if (is_value_discontinued(discoutinuous_values, t))
-	{
-		add_char_to_grid(grid, '+', grid_data.s_zero_row_idx, j);
-	}
-	else
-	{
-		double v_th = calculate_theoritical_val(type, t);
-		int row_idx = calculate_row_idx(v_th, grid_data);
-		add_char_to_grid(grid, '+', row_idx, j);
-	}
-}
-
 int calculate_row_idx(double v_th, const Grid_data& grid_data)
 {
 	double v = ((v_th - grid_data.s.min) / (grid_data.delta_s)) + 0.5;
@@ -287,18 +255,74 @@ int calculate_row_idx(double v_th, const Grid_data& grid_data)
 	return i;
 }
 
-void add_char_to_grid(vector<vector<char>>& grid, char c, int row_idx, int col_idx)
+void add_char_to_grid(vector<vector<char>>& grid, char c, int row_idx,
+	int col_idx)
 {
-	const size_t row_count = grid.size();
-	if ((row_idx >= 0) and (row_idx < row_count))
+	constexpr int first_row_idx = 0;
+	const int row_count = grid.size();
+	if ((row_idx >= first_row_idx) and (row_idx < row_count))
 	{
 		grid[row_idx][col_idx] = c;
 	}
 }
 
-void add_approx_val(vector<vector<char>>& grid, Signal_type type, 
-							int sine_count, double t, const Grid_data& grid_data, 
-							int j)
+void add_theoritical_val(vector<vector<char>>& grid, Signal_type type, double t,
+	const Grid_data& grid_data, int j)
+{
+	vector<double> discontinuous_values = {};
+	switch (type)
+	{
+	case SAWTOOTH:
+		discontinuous_values = { 0.0, 1.0 };
+		break;
+	case SQUARE:
+		discontinuous_values = { 0.0, 0.5, 1.0 };
+		break;
+	case TRIANGLE:
+	default:
+		break;
+	}
+
+	for (const auto disc_value : discontinuous_values)
+	{
+		if ((t >= disc_value - EPSIL_T) and
+			(t <= disc_value + EPSIL_T))
+		{
+			add_char_to_grid(grid, '+', grid_data.s_zero_row_idx, j);
+			return;
+		}
+	}
+
+	double v_th = calculate_theoritical_val(type, t);
+	int row_idx = calculate_row_idx(v_th, grid_data);
+	add_char_to_grid(grid, '+', row_idx, j);
+}
+
+double calculate_theoritical_val(Signal_type signal_type, double t)
+{
+	switch (signal_type)
+	{
+	case SAWTOOTH:
+		return -1. + (2. * t);
+	case SQUARE:
+		if ((t > 0.) and (t < 0.5))
+		{
+			return 1;
+		}
+		return -1;
+	case TRIANGLE:
+		if ((t >= 0) and (t < 0.5))
+		{
+			return -1 + 4 * t;
+		}
+		return -4 * t + 3;
+	default:
+		return 0;
+	}
+};
+
+void add_approx_val(vector<vector<char>>& grid, Signal_type type,
+	int sine_count, double t, const Grid_data& grid_data, int j)
 {
 	// Add '*' symbol for approximate signal values.
 	double s_t = calculate_approx_val(type, sine_count, t);
@@ -307,18 +331,34 @@ void add_approx_val(vector<vector<char>>& grid, Signal_type type,
 	add_char_to_grid(grid, '*', row_idx, j);
 }
 
-bool is_value_discontinued(const vector<double>& discontinuous_values, double t)
+double calculate_approx_val(Signal_type signal_type, int sine_count, double t)
 {
-	for (const auto disc_value : discontinuous_values)
-	{
-		if ((t >= disc_value - EPSIL_T) and
-			(t <= disc_value + EPSIL_T))
-		{
-			return true;
-		}
-	}
+	double sin_sum = 0.0;
 
-	return false;
+	switch (signal_type)
+	{
+	case SAWTOOTH:
+		for (int k(1); k <= sine_count; k++)
+		{
+			sin_sum += (pow(-1, k) / k) * sin(2 * M_PI * k * (t - 0.5));
+		}
+		return ((-2) / M_PI) * sin_sum;
+	case SQUARE:
+		for (int k(1); k <= sine_count; k++)
+		{
+			sin_sum += sin(2 * M_PI * (2 * k - 1) * t) / (2 * k - 1);
+		}
+		return (4 / M_PI) * sin_sum;
+	case TRIANGLE:
+		for (int k(1); k <= sine_count; k++)
+		{
+			sin_sum += (pow(-1, k) / pow(2 * k - 1, 2)) *
+				sin(2 * M_PI * (2 * k - 1) * (t - 0.25));
+		}
+		return ((-8) / pow(M_PI, 2)) * sin_sum;
+	default:
+		return 0.0;
+	}
 }
 
 void draw_line_of_dashes(size_t length)
@@ -350,60 +390,6 @@ void draw_grid(const vector<vector<char>>& grid)
 	draw_line_of_dashes(column_count);
 }
 
-double calculate_theoritical_val(Signal_type signal_type, double t)
-{
-	switch (signal_type)
-	{
-		case SAWTOOTH:
-			return -1. + (2. * t);
-		case SQUARE:
-			if ((t > 0.) and (t < 0.5))
-			{
-				return 1;
-			}
-			return -1;
-		case TRIANGLE:
-			if ((t >= 0) and (t < 0.5))
-			{
-				return -1 + 4 * t;
-			}
-			return -4 * t + 3;
-		default:
-			return 0;
-	}
-};
-
-double calculate_approx_val(Signal_type signal_type, 
-							int sine_count, double t)
-{
-	double sin_sum = 0.0;
-
-	switch (signal_type)
-	{
-	case SAWTOOTH:
-		for (int k(1); k <= sine_count; k++)
-		{
-			sin_sum += (pow(-1, k) / k) * sin(2 * M_PI * k * (t - 0.5));
-		}
-		return ((-2) / M_PI) * sin_sum;
-	case SQUARE:
-		for (int k(1); k <= sine_count; k++)
-		{
-			sin_sum += sin(2 * M_PI * (2 * k - 1) * t) / (2 * k - 1);
-		}
-		return (4 / M_PI) * sin_sum;
-	case TRIANGLE:
-		for (int k(1); k <= sine_count; k++)
-		{
-			sin_sum += (pow(-1, k) / pow(2 * k - 1, 2)) *
-				sin(2 * M_PI * (2 * k - 1) * (t - 0.25));
-		}
-		return ((-8) / pow(M_PI, 2)) * sin_sum;
-	default:
-		return 0.0;
-	}
-}
-
 double find_approx_signal_max(Signal_type signal_type, int sine_count)
 {
 	Interval t = { 0, 0 };
@@ -411,18 +397,18 @@ double find_approx_signal_max(Signal_type signal_type, int sine_count)
 	// Get the correct period based on the signal type.
 	switch (signal_type)
 	{
-		case SAWTOOTH:
-			t.min = 1. - 1. / (2 * sine_count + 1);
-			t.max = 1;
-			break;
-		case SQUARE:
-			t.min = 0;
-			t.max = 1. / (2 * sine_count + 1);
-			break;
-		case TRIANGLE:
-			t.min = 0.5 - 1. / (2 * (2 * sine_count + 1));
-			t.max = 0.5 + 1. / (2 * (2 * sine_count + 1));
-			break;
+	case SAWTOOTH:
+		t.min = 1. - 1. / (2 * sine_count + 1);
+		t.max = 1;
+		break;
+	case SQUARE:
+		t.min = 0;
+		t.max = 1. / (2 * sine_count + 1);
+		break;
+	case TRIANGLE:
+		t.min = 0.5 - 1. / (2 * (2 * sine_count + 1));
+		t.max = 0.5 + 1. / (2 * (2 * sine_count + 1));
+		break;
 	}
 
 	return dichotomic_max_search(signal_type, sine_count, t);
@@ -432,7 +418,8 @@ double dichotomic_max_search(Signal_type signal_type, int sine_count, Interval t
 {
 	double max = 0.0;
 	double old_max = 0.0;
-	while (true)
+
+	do
 	{
 		double t_mid = (t.max + t.min) / 2.0;
 		double t_mid_left = (t_mid + t.min) / 2.0;
@@ -440,6 +427,8 @@ double dichotomic_max_search(Signal_type signal_type, int sine_count, Interval t
 
 		double l_val = calculate_approx_val(signal_type, sine_count, t_mid_left);
 		double r_val = calculate_approx_val(signal_type, sine_count, t_mid_right);
+
+		old_max = max; // Stores the previous max value.
 
 		if (l_val > r_val)
 		{
@@ -452,11 +441,7 @@ double dichotomic_max_search(Signal_type signal_type, int sine_count, Interval t
 			max = r_val;
 		}
 
-		if (fabs(max - old_max) < EPSIL_DICHO)
-		{
-			return max;
-		}
+	} while (fabs(max - old_max) > EPSIL_DICHO);
 
-		old_max = max;
-	}
-}																					  
+	return max;
+}
